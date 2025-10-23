@@ -21,12 +21,12 @@
             </nav>
             <div class="d-flex justify-content-between w-100 flex-wrap">
                 <div class="mb-3 mb-lg-0">
-                    <h1 class="h4">Data Pelanggan</h1>
+                    <h1 class="h4">Data User</h1>
                     <p class="mb-0">List data seluruh pelanggan</p>
                 </div>
                 <div>
                     <a href="{{ route('pelanggan.create') }}" class="btn btn-success text-white"><i
-                            class="far fa-question-circle me-1"></i> Tambah Pelanggan</a>
+                            class="far fa-question-circle me-1"></i> Tambah User</a>
                 </div>
             </div>
         </div>
@@ -51,25 +51,21 @@
                             <table id="table-pelanggan" class="table table-centered table-nowrap mb-0 rounded">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th class="border-0">First Name</th>
-                                        <th class="border-0">Last Name</th>
-                                        <th class="border-0">Birthday</th>
-                                        <th class="border-0">Gender</th>
+                                        <th class="border-0">Nama Lengkap</th>
                                         <th class="border-0">Email</th>
-                                        <th class="border-0">Phone</th>
+                                        <th class="border-0">Password</th>
+
                                         <th class="border-0 rounded-end">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($dataPelanggan as $item)
+                                    @foreach ($dataUser as $item)
                                         <tr>
-                                            <td>{{ $item->first_name }}</td>
-                                            <td>{{ $item->last_name }}</td>
-                                            <td>{{ $item->birthday }}</td>
-                                            <td>{{ $item->gender }}</td>
+                                            <td>{{ $item->name }}</td>
                                             <td>{{ $item->email }}</td>
-                                            <td>{{ $item->phone }}</td>
-                                            <td><a href="{{ route('pelanggan.edit', $item->pelanggan_id) }}"
+                                            <td>{{ $item->password }}</td>
+                                            <td>
+                                                <a href=""
                                                     class="btn btn-info btn-sm">
                                                     <svg class="icon icon-xs me-2" data-slot="icon" fill="none"
                                                         stroke-width="1.5" stroke="currentColor" viewBox="0 0 24 24"
@@ -80,7 +76,7 @@
                                                     </svg>
                                                     Edit
                                                 </a>
-                                                <form action="{{ route('pelanggan.destroy', $item->pelanggan_id) }}"
+                                                <form action=""
                                                     method="POST" style="display:inline">
                                                     @csrf
                                                     @method('DELETE')
