@@ -16,6 +16,11 @@ class Pelanggan extends Model
         'phone',
     ];
 
+    public function attachments()
+    {
+        return $this->hasMany(PelangganAttachment::class, 'pelanggan_id', 'pelanggan_id');
+    }
+
     public function scopeFilter(Builder $query, $request, array $filterableColumns): Builder
     {
         foreach ($filterableColumns as $column) {
@@ -27,13 +32,13 @@ class Pelanggan extends Model
     }
 
     public function scopeSearch($query, $request, array $columns)
-{
-    if ($request->filled('search')) {
-        $query->where(function($q) use ($request, $columns) {
-            foreach ($columns as $column) {
-                $q->orWhere($column, 'LIKE', '%' . $request->search . '%');
-            }
-        });
+    {
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request, $columns) {
+                foreach ($columns as $column) {
+                    $q->orWhere($column, 'LIKE', '%' . $request->search . '%');
+                }
+            });
+        }
     }
-}
 }

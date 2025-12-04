@@ -2,7 +2,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pelanggan;
+use App\Models\PelangganAttachment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PelangganController extends Controller
 {
@@ -33,18 +35,32 @@ class PelangganController extends Controller
      */
     public function store(Request $request)
     {
-        // dd($request->all());
-        $data['first_name'] = $request->first_name;
-        $data['last_name']  = $request->last_name;
-        $data['birthday']   = $request->birthday;
-        $data['gender']     = $request->gender;
-        $data['email']      = $request->email;
-        $data['phone']      = $request->phone;
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'birthday' => 'nullable|date',
+            'gender' => 'required|in:Male,Female',
+            'email' => 'required|email|unique:pelanggan',
+            'phone' => 'nullable|string|max:20',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx,jpg,png|max:5120',
+        ]);
 
-        Pelanggan::create($data);
+        $pelanggan = Pelanggan::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'birthday' => $validated['birthday'],
+            'gender' => $validated['gender'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+        ]);
+
+        // Handle multiple file upload
+        if ($request->hasFile('attachments')) {
+            $this->storeAttachments($pelanggan, $request->file('attachments'));
+        }
 
         return redirect()->route('pelanggan.index')->with('success', 'Penambahan Data Berhasil!');
-
     }
 
     /**
@@ -60,36 +76,96 @@ class PelangganController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $dataPelanggan = Pelanggan::findOrFail($id);
+        return view('admin.pelanggan.edit_new', compact('dataPelanggan'));
     }
 
     /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
-{
-    $pelanggan_id = $id;
-    $pelanggan = Pelanggan::findOrFail($pelanggan_id);
+    {
+        $pelanggan = Pelanggan::findOrFail($id);
 
-    $pelanggan->first_name = $request->first_name;
-    $pelanggan->last_name  = $request->last_name;
-    $pelanggan->birthday   = $request->birthday;
-    $pelanggan->gender     = $request->gender;
-    $pelanggan->email      = $request->email;
-    $pelanggan->phone      = $request->phone;
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'birthday' => 'nullable|date',
+            'gender' => 'required|in:Male,Female',
+            'email' => 'required|email|unique:pelanggan,email,' . $id . ',pelanggan_id',
+            'phone' => 'nullable|string|max:20',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|mimes:pdf,doc,docx,xls,xlsx,jpg,png|max:5120',
+            'delete_attachment_ids' => 'nullable|string',
+        ]);
 
-    $pelanggan->save();
-    return redirect()->route('pelanggan.index')->with('update', 'Perubahan Data Berhasil!');
-}
+        // Update data
+        $pelanggan->update([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'birthday' => $validated['birthday'],
+            'gender' => $validated['gender'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+        ]);
+
+        // Delete selected attachments
+        if ($request->filled('delete_attachment_ids')) {
+            $deleteIds = explode(',', $request->delete_attachment_ids);
+            foreach ($deleteIds as $deleteId) {
+                $attachment = PelangganAttachment::find(trim($deleteId));
+                if ($attachment) {
+                    if (Storage::exists('public/pelanggan_files/' . $attachment->file_path)) {
+                        Storage::delete('public/pelanggan_files/' . $attachment->file_path);
+                    }
+                    $attachment->delete();
+                }
+            }
+        }
+
+        // Handle new file uploads
+        if ($request->hasFile('attachments')) {
+            $this->storeAttachments($pelanggan, $request->file('attachments'));
+        }
+
+        return redirect()->route('pelanggan.index')->with('update', 'Perubahan Data Berhasil!');
+    }
 
     /**
      * Remove the specified resource from storage.
      */
-   public function destroy(string $id)
-{
-    $pelanggan = Pelanggan::findOrFail($id);
+    public function destroy(string $id)
+    {
+        $pelanggan = Pelanggan::findOrFail($id);
 
-    $pelanggan->delete();
-    return redirect()->route('pelanggan.index')->with('delete', 'Data berhasil dihapus');
-}
+        // Delete all attachments
+        foreach ($pelanggan->attachments as $attachment) {
+            if (Storage::exists('public/pelanggan_files/' . $attachment->file_path)) {
+                Storage::delete('public/pelanggan_files/' . $attachment->file_path);
+            }
+            $attachment->delete();
+        }
+
+        $pelanggan->delete();
+        return redirect()->route('pelanggan.index')->with('delete', 'Data berhasil dihapus');
+    }
+
+    /**
+     * Store attachments for a pelanggan
+     */
+    private function storeAttachments(Pelanggan $pelanggan, $files)
+    {
+        foreach ($files as $file) {
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/pelanggan_files', $filename);
+
+            PelangganAttachment::create([
+                'pelanggan_id' => $pelanggan->pelanggan_id,
+                'file_name' => $file->getClientOriginalName(),
+                'file_path' => $filename,
+                'file_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+        }
+    }
 }
